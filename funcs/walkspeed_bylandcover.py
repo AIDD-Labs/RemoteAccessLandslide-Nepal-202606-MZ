@@ -12,7 +12,9 @@ def Func_WalkSpeed_by_LandCover(input_tiff, output_tiff):
     Returns:
         None
     """
-    # Define the mapping from land cover class to travel speed (km/h)
+    # --- Nepal case study: land-cover class -> foot travel speed (km/h) ---
+    # Matches class codes 1-8 in DATA_DESCRIPTION.md. 
+    # Edit for your own land-cover legend and local walk-speed parameters.
     travel_speed_map = {
         1: 3.24,  # Forest
         2: 3.6,   # Shrubland
@@ -48,5 +50,3 @@ def Func_WalkSpeed_by_LandCover(input_tiff, output_tiff):
     # Write the output raster to a new file
     with rasterio.open(output_tiff, 'w', **meta) as dst:
         dst.write(output_data, 1)
-
-    print(f"Travel speed raster saved to {output_tiff}")

@@ -8,13 +8,20 @@ def Func_DriveSpeed_by_Road_Slope(
     output_speed_tiff_path
 ):
     """
-    Calculates driving speed based on road class and slope.
+    Calculate driving speed from road class and slope on the same base grid.
 
-    :param road_class_tiff_path: Path to the road classification raster (0, 1-4, NaN)
-    :param slope_tiff_path: Path to the slope raster (% values)
-    :param output_speed_tiff_path: Path to save the output speed raster
+    Parameters:
+        road_class_tiff_path (str): Road-class raster (0 = no road, 1–4 = class, NaN outside study).
+        slope_tiff_path (str): Slope raster in percent (%).
+        output_speed_tiff_path (str): Output drive-speed raster (km/h).
+
+    Note:
+        Nepal landslide case study — drive speed comes from the speed_lookup table
+        below (road class × slope band → km/h). Classes 1–4 match Nepal designations
+        (SRN, DRCN, SUR/ unpaved, VR/paths). Slope bands are 0–10%, 10–25%, 25–60%,
+        and 60–100%. Edit speed_lookup for your own road types and speed assumptions.
     """
-    # Define speed lookup table
+    # --- Nepal case study: road class × slope (%) -> drive speed km/h (edit for your area) ---
     speed_lookup = {
         1: {  # Strategic Road Network (SRN)
             (0, 10): 50,

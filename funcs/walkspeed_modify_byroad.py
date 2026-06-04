@@ -1,70 +1,55 @@
-import geopandas as gpd
-import numpy as np
 import rasterio
-from rasterio.features import rasterize
-from shapely.geometry import box
+import numpy as np
 
-
-def Func_Modify_WalkSpeed_by_Roads(input_raster, roads_geojson, output_raster, footpath_speed=5):
+def Func_Modify_WalkSpeed_by_Roads(walking_speed_raster, roads_raster, output_raster, footpath_speed=5):
     """
-    Updates a walk speed raster by adding footpath cells from all geometries in a GeoJSON.
+    Processes two rasters (walking speed and roads) based on the following rules:
+    - Both rasters should have the same cell system (dimensions, transform, etc.).
+    - Both rasters should have NaN at the same cells; if not, raise an error.
+    - For non-NaN cells:
+        - If the roads raster has a value >= 1 (road present), set the output cell to
+          footpath_speed (default 5 km/h).
+        - If the roads raster has a value of 0, retain the walking speed value from the input.
 
-    :param input_raster: Path to the input walk speed GeoTIFF
-    :param roads_geojson: Path to the GeoJSON containing road geometries
-    :param output_raster: Path to save the updated walk speed GeoTIFF
-    :param footpath_speed: Walk speed for footpath cells (default: 5 km/h)
+    Parameters:
+        walking_speed_raster (str): Path to the input walking speed raster.
+        roads_raster (str): Path to the input road-class raster (0 = no road, 1-4 = road class).
+        output_raster (str): Path to save the processed raster.
+        footpath_speed (float): Walk speed on road cells in km/h. Default 5.
+
+    Returns:
+        None: Saves the processed raster to the specified path.
     """
-    # Load the roads GeoJSON
-    gdf = gpd.read_file(roads_geojson)
+    # Open the two rasters
+    with rasterio.open(walking_speed_raster) as speed_src, rasterio.open(roads_raster) as roads_src:
+        # Ensure both rasters have the same dimensions and transform
+        if speed_src.shape != roads_src.shape or speed_src.transform != roads_src.transform:
+            raise ValueError("Input rasters must have the same shape and transform.")
 
-    # Load the input raster
-    with rasterio.open(input_raster) as ref_raster:
-        ref_meta = ref_raster.meta.copy()
-        ref_transform = ref_raster.transform
-        ref_crs = ref_meta['crs']
-        ref_array = ref_raster.read(1)  # Read the first band
-        ref_bounds = ref_raster.bounds
+        # Read the first bands of both rasters
+        walking_speed = speed_src.read(1)
+        roads = roads_src.read(1)
 
-    # Reproject the GeoDataFrame to the raster's CRS
-    if gdf.crs != ref_crs:
-        gdf = gdf.to_crs(ref_crs)
+        # Ensure NaN values are consistent between the two rasters
+        nan_speed = np.isnan(walking_speed)
+        nan_roads = np.isnan(roads)
+        if not np.array_equal(nan_speed, nan_roads):
+            raise ValueError("Input rasters have mismatched NaN values.")
 
-    # Filter geometries that intersect the reference raster bounds
-    gdf = gdf[gdf.intersects(box(*ref_bounds))]
-    if gdf.empty:
-        raise ValueError("No geometries intersect the reference raster bounds.")
+        # Create the output raster
+        output = np.copy(walking_speed)
 
-    # Buffer the geometries by a small size (e.g., 1/10th of a raster cell size)
-    buffer_size = ref_transform[0] * 0.4  # Assuming square cells
-    gdf['geometry'] = gdf['geometry'].buffer(buffer_size)
+        # Process non-NaN cells
+        road_cells = (roads >= 1)
+        non_road_cells = (roads == 0)
 
-    # Remove invalid or empty geometries after buffering
-    gdf = gdf[gdf.is_valid & ~gdf.is_empty]
-    if gdf.empty:
-        raise ValueError("No valid geometries found after buffering.")
+        # Apply rules
+        output[road_cells] = footpath_speed                        # Roads set to footpath speed
+        output[non_road_cells] = walking_speed[non_road_cells]    # Retain walking speed elsewhere
 
-    # Rasterize the buffered geometries
-    def rasterize_footpaths(gdf, ref_array, transform):
-        # Rasterize the buffered geometries
-        raster = rasterize(
-            [(geom, 1) for geom in gdf.geometry],
-            out_shape=ref_array.shape,
-            transform=transform,
-            fill=0,
-            all_touched=True  # Ensure 4-point connectivity
-        ).astype(np.float32)
+        # Save the processed raster
+        out_meta = speed_src.meta.copy()
+        out_meta.update(dtype='float32', count=1, compress='lzw')
 
-        # Handle NaN cells in the reference raster
-        raster[np.isnan(ref_array)] = np.nan
-        return raster
-
-    footpath_raster = rasterize_footpaths(gdf, ref_array, ref_transform)
-
-    # Update the base raster with the new footpath cells
-    updated_raster = np.copy(ref_array)
-    updated_raster[footpath_raster == 1] = footpath_speed
-
-    # Save the updated raster
-    ref_meta.update(dtype='float32', count=1, compress='lzw')
-    with rasterio.open(output_raster, 'w', **ref_meta) as out_raster:
-        out_raster.write(updated_raster, 1)
+        with rasterio.open(output_raster, 'w', **out_meta) as dst:
+            dst.write(output, 1)

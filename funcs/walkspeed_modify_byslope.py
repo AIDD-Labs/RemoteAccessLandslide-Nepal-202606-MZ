@@ -9,6 +9,16 @@ def Func_Modify_WalkSpeed_by_Slope(walk_speed_raster_path, slope_raster_path, ou
         walk_speed_raster_path (str): Path to the walking speed raster (input).
         slope_raster_path (str): Path to the slope raster in degrees (input).
         output_raster_path (str): Path to save the modified walking speed raster (output).
+
+    Note:
+        Nepal landslide case study — edit the cap, formula, and slope units below for
+        your own local parameters.
+
+        - Slope values are capped at 30 degrees to avoid unrealistic speed reductions.
+        - Slope raster is in degrees; convert to radians before applying the formula.
+        - modification_factor = exp(-3.5 * abs(tan(slope_radians) + 0.05))
+        - Multiply walk speed by the modification factor for each cell.
+    
     """
     # Open the walking speed raster
     with rasterio.open(walk_speed_raster_path) as walk_speed_src:
@@ -23,10 +33,9 @@ def Func_Modify_WalkSpeed_by_Slope(walk_speed_raster_path, slope_raster_path, ou
         if walk_speed.shape != slope.shape:
             raise ValueError("The dimensions of the walking speed and slope rasters must match.")
     
-    # Cap slope values at 30 degrees
+    # --- Nepal case study: slope cap and walk-speed factor (edit for your area) ---
     slope_capped = np.minimum(slope, 30)
     
-    # Calculate the modification factor
     slope_radians = np.radians(slope_capped)
     modification_factor = np.exp(-3.5 * np.abs(np.tan(slope_radians) + 0.05))
     

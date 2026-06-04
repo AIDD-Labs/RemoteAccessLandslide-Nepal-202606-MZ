@@ -10,16 +10,16 @@ def Func_Modify_WalkSpeed_by_Elevation(walk_speed_raster_path, elevation_raster_
         elevation_raster_path (str): Path to the elevation raster.
         output_raster_path (str): Path to save the modified walking speed raster.
 
-    Behavior:
-        - The walking speed and elevation rasters must have the same dimensions and NaN cells.
-        - For non-NaN cells, apply an elevation modification factor:
-          - Elevation 0-3000: factor 1
-          - Elevation 3000-4000: factor 0.8
-          - Elevation 4000-5000: factor 0.6
-          - Elevation 5000-6000: factor 0.4
-          - Elevation >= 6000: factor 0.2
-        - Multiply the factor with the walking speed for each cell.
-        - Save the modified walking speed raster to the specified output path.
+    Note:
+        Nepal case study — for each non-NaN cell, multiply walk speed by an elevation
+        factor (elevation in meters). Edit the bands and factors in this function for
+        your own local parameters.
+
+        - Elevation 0–3000 m: factor 1.0
+        - Elevation 3000–4000 m: factor 0.8
+        - Elevation 4000–5000 m: factor 0.6
+        - Elevation 5000–6000 m: factor 0.4
+        - Elevation ≥ 6000 m: factor 0.2
     """
     # Open the walking speed raster
     with rasterio.open(walk_speed_raster_path) as walk_speed_src:
@@ -40,7 +40,7 @@ def Func_Modify_WalkSpeed_by_Elevation(walk_speed_raster_path, elevation_raster_
     # Initialize the modification factor array
     modification_factor = np.ones_like(elevation)
 
-    # Apply elevation modification factors
+    # --- Nepal case study: elevation bands -> walk-speed factor (edit for your area) ---
     modification_factor[(elevation > 3000) & (elevation <= 4000)] = 0.8
     modification_factor[(elevation > 4000) & (elevation <= 5000)] = 0.6
     modification_factor[(elevation > 5000) & (elevation <= 6000)] = 0.4

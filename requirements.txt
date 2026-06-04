@@ -1,6 +1,7 @@
 numpy
 rasterio
 geopandas
+matplotlib
 networkx
 tqdm
 shapely

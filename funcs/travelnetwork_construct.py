@@ -92,5 +92,3 @@ def Func_Construct_Travel_Network(raster_path, output_pickle_path):
         print(f"{num_isolated} / {total_valid_cells} cells are isolated")
     else:
         print("No isolated cells found.")
-
-    print(f"Graph saved to {output_pickle_path}")

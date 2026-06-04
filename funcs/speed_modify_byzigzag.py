@@ -3,11 +3,20 @@ import numpy as np
 
 def Func_Modify_Speed_by_Zigzag(input_speed, input_slope, output_speed):
     """
-    Modifies a speed raster based on the increased distance of a zigzag path on a slope.
+    Modify a speed raster to account for longer zigzag travel on sloped terrain.
 
-    :param input_speed: Path to the input speed raster (GeoTIFF)
-    :param input_slope: Path to the slope raster (GeoTIFF)
-    :param output_speed: Path to save the modified speed raster (GeoTIFF)
+    Parameters:
+        input_speed (str): Path to the input speed raster (GeoTIFF).
+        input_slope (str): Path to the slope raster (GeoTIFF).
+        output_speed (str): Path to save the modified speed raster (GeoTIFF).
+
+    Note:
+        Nepal landslide case study — edit the slope threshold and formulas below for
+        your own local parameters. Slope raster is in degrees.
+
+        - Slope ≤ 30°: new_speed = old_speed × cos(slope)
+        - Slope > 30°: new_speed = old_speed × sin(30°) / tan(slope)
+
     """
     # Open the speed raster
     with rasterio.open(input_speed) as speed_src:
@@ -25,7 +34,7 @@ def Func_Modify_Speed_by_Zigzag(input_speed, input_slope, output_speed):
     # Create an output array for modified speed
     modified_speed = np.copy(speed)
 
-    # Convert slope to radians
+    # --- Nepal case study: zigzag path correction on slope (edit for your area) ---
     slope_radians = np.radians(slope)
 
     # Apply transformation rules

@@ -11,9 +11,6 @@ def Func_Combine_Speed_Landslide(base_speed_raster, landslide_raster, output_ras
         base_speed_raster (str): Path to the base speed raster file.
         landslide_raster (str): Path to the landslide raster file.
         output_raster (str): Path to save the resulting raster.
-
-    Returns:
-        None: Saves the combined raster to the specified path.
     """
     # Load the base speed raster
     with rasterio.open(base_speed_raster) as base_src:

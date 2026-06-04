@@ -15,8 +15,6 @@ def Func_Modify_WalkSpeed_by_Water(walking_speed_raster, water_area_raster, outp
         water_area_raster (str): Path to the input water area raster.
         output_raster (str): Path to save the processed raster.
 
-    Returns:
-        None: Saves the processed raster to the specified path.
     """
     # Open the two rasters
     with rasterio.open(walking_speed_raster) as speed_src, rasterio.open(water_area_raster) as water_src:

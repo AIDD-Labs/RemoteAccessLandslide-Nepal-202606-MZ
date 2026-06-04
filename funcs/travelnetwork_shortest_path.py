@@ -23,8 +23,14 @@ def Func_Shortest_Path_To_Target(graph_pickle_path, target_pickle_path, referenc
         reference_raster_path (str): Path to the reference raster (GeoTIFF).
         output_raster_path (str): Path to save the final output raster (GeoTIFF).
 
-    Returns:
-        None: Saves the final output raster to the specified path.
+    Note:
+        This runs one full shortest-path solve per target, then takes the cell-wise
+        minimum across targets. For a large destination set, parallelize the per-target
+        loop (e.g. multiprocessing or PySpark), or use a more advanced approach (e.g.
+        multi-source Dijkstra, catchment-limited routing, or computing times only within
+        each destination's service area). For this Nepal case study the hospital count is
+        small, so this sequential version is the simplest adequate format.
+
     """
     # Load the graph from pickle
     with open(graph_pickle_path, 'rb') as f:
@@ -94,5 +100,3 @@ def Func_Shortest_Path_To_Target(graph_pickle_path, target_pickle_path, referenc
     ref_meta.update(dtype='float32', compress='lzw')
     with rasterio.open(output_raster_path, 'w', **ref_meta) as out_raster:
         out_raster.write(final_raster, 1)
-
-    print(f"Combined shortest path raster saved to {output_raster_path}")

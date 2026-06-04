@@ -1,58 +1,36 @@
 """Build a destination-node pickle from a destination raster (aligned to the base grid)."""
 
 import pickle
-from pathlib import Path
 
 import numpy as np
 import rasterio
 
 
-def destination_raster_to_pickle(
-    destination_raster_path,
-    output_pickle_path,
-    reference_raster_path=None,
-):
+def destination_raster_to_pickle(destination_raster_path, output_pickle_path):
     """
-    Convert a destination GeoTIFF to a node-collection pickle for shortest-path routing.
+    Convert a destination GeoTIFF to a pickle list of target cells for shortest-path routing.
 
-    Each cell with a finite value **> 0** becomes one target node ``(row, col)``.
-    The cell value is used as the node id when it is a whole number; otherwise a
-    running index is assigned.
+    Each cell with a finite value **> 0** becomes one destination ``(row, col)`` on the
+    destination raster grid. The cell value itself is not used — only the location matters.
 
     Parameters
     ----------
     destination_raster_path : str or Path
-        GeoTIFF band 1: destination markers (e.g. count or flag per cell).
+        GeoTIFF band 1: destination markers on the modeling base grid (value > 0).
     output_pickle_path : str or Path
-        Where to write the pickle dict ``{(row, col): id_str, ...}``.
-    reference_raster_path : str or Path, optional
-        If given, destination raster must match this raster's shape, transform, and CRS.
+        Where to write the pickle list ``[(row, col), ...]``.
 
     Returns
     -------
-    dict
-        The node collection written to the pickle file.
+    list[tuple[int, int]]
+        Destination grid cells written to the pickle file.
     """
-    destination_raster_path = Path(destination_raster_path)
-    output_pickle_path = Path(output_pickle_path)
-
+    # Read destination raster (cells with value > 0 mark a target location)
     with rasterio.open(destination_raster_path) as src:
         data = np.asarray(src.read(1), dtype=np.float64)
-        dest_meta = src.meta.copy()
 
-    if reference_raster_path is not None:
-        with rasterio.open(reference_raster_path) as ref:
-            ref_meta = ref.meta.copy()
-        ref_filtered = {k: v for k, v in ref_meta.items() if k not in ("dtype", "nodata")}
-        dest_filtered = {k: v for k, v in dest_meta.items() if k not in ("dtype", "nodata")}
-        if ref_filtered != dest_filtered:
-            raise ValueError(
-                "Destination raster grid must match the reference raster "
-                "(shape, transform, CRS)."
-            )
-
-    nodes_collection = {}
-    fallback_id = 0
+    # Collect (row, col) for every destination cell
+    destination_nodes = []
     rows, cols = data.shape
 
     for row in range(rows):
@@ -60,23 +38,15 @@ def destination_raster_to_pickle(
             value = data[row, col]
             if not np.isfinite(value) or value <= 0:
                 continue
-            if value == np.floor(value):
-                node_id = str(int(value))
-            else:
-                node_id = str(fallback_id)
-                fallback_id += 1
-            nodes_collection[(int(row), int(col))] = node_id
+            destination_nodes.append((int(row), int(col)))
 
-    if not nodes_collection:
+    if not destination_nodes:
         raise ValueError(
             f"No destination cells (value > 0) found in {destination_raster_path}."
         )
 
-    output_pickle_path.parent.mkdir(parents=True, exist_ok=True)
+    # Write destination cell list for shortest-path routing
     with open(output_pickle_path, "wb") as f:
-        pickle.dump(nodes_collection, f)
+        pickle.dump(destination_nodes, f)
 
-    print(
-        f"Destination nodes: {len(nodes_collection)} cells -> {output_pickle_path}"
-    )
-    return nodes_collection
+    return destination_nodes
