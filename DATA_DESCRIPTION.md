@@ -1,8 +1,8 @@
 # Input Data Description (Nepal Landslide Case Study)
 
-This document describes **what data to prepare** before running the travel-speed and access-time workflow (`2_1`–`3_2`). It lists **original sources**, **original formats**, and **final prepared products**. It does not include processing code—only where the data came from and what each file should contain.
+This document describes the input data required to run the travel-speed and access-time workflow. It specifies the required input data formats expected by the model and provides example data sources from the Nepal case study.
 
-Prepared data for this project are described in notebooks **`1_0`** through **`1_4`**.
+Data preprocessing scripts are not included, as preprocessing workflows vary substantially across regions and data sources. Users should prepare their own datasets according to the input specifications described in this document.
 
 ---
 
@@ -18,70 +18,78 @@ All GeoTIFF layers used in modeling must share the **same raster base**:
 
 **You choose the base raster and cell size.** In this Nepal study, the base grid was defined from a **population** layer after clipping to the study boundary and aggregating cells (see §1). Another project could use a DEM, a blank template, or any reference grid—but every subsequent raster must be resampled or rasterized to that same grid.
 
-Outside the study area, cells should be **`NaN`** (not zero), unless a layer explicitly uses zero with a documented meaning (e.g. “no road”).
+All layers share one **rectangular** GeoTIFF grid; the study boundary itself can be **any shape** (in Nepal, 14 irregular districts inside a rectangular bounding box). After masking, cells **inside** the boundary hold real values (`0` is fine where it means something, e.g. no road); cells **outside** the boundary but still in the raster must be **`NaN`**.
 
 ---
 
-## 1. Population (typical base grid for this project)
+## 1. Population (base grid for this project)
+
+**General dataset**
 
 | Item | Detail |
 |------|--------|
-| **Notebook** | `1_1_Data_Prep_Population.ipynb` |
-| **Original source** | Meta High Resolution Population Density Maps for Nepal |
-| **Source link** | https://dataforgood.facebook.com/dfg/docs/methodology-high-resolution-population-density-maps |
-| **Original file (example)** | `data/raw/population_npl_2018-10-01.tif` |
-| **Original format** | GeoTIFF, band 1 = population count (or density per cell, depending on Meta product version) |
-| **Original resolution (this study)** | ~30.9 m × 30.9 m (noted in notebook before aggregation) |
+| **Product** | Meta [High Resolution Population Density Maps](https://ai.meta.com/ai-for-good/docs/methodology-high-resolution-population-density-maps/) 
 
-**Final prepared product**
+**Nepal data**
 
-| File (example) | `data/input/MFD_population.tif` |
+| Item | Detail |
+|------|--------|
+| **Download** | [Nepal HRSL on HDX](https://data.humdata.org/dataset/nepal-high-resolution-population-density-maps-demographic-estimates) |
+| **Original format** | GeoTIFF, band 1 = estimated population count per cell |
+| **Original resolution** | ~30.9 m × 30.9 m (before 3×3 aggregation in prep) |
+
+**Processed input data**
+
+| File (example) | `data/input/population.tif` |
 |----------------|----------------------------------|
 | Format | GeoTIFF, `float`, band 1 |
 | Values | People per cell (≥ 0 inside study area) |
-| Outside study | `NaN` |
-| Grid role | **Base grid** for this project: clipped to study boundary, cells aggregated **3×3** (~90 m) in the Nepal workflow |
 
-**Notes for other users:** Pick your own cell size when building the base (e.g. 30 m, 90 m, 100 m). All other rasters must be aligned to whatever base you define.
+**Nepal case study:** Clipped to the study boundary, aggregated **3×3** (~31 m → ~90 m), and used as the **base grid** for all other layers.
+
 
 ---
 
 ## 2. Study area boundary (optional but used in prep)
 
-| Item | Detail |
-|------|--------|
-| **Notebook** | `1_0_Data_Prep_StudyArea.ipynb` |
-| **Original source** | Nepal district boundaries (31 earthquake-affected districts), MoFALD / HRRP |
-| **Original file (example)** | `data/raw/District/districts_31A/31Adist_polbnda_adm3_MoFALD_HRRP_wgs84.shp` |
-| **Original format** | Esri shapefile; district name field `HRRP_DNAME` |
+Define **your own** study extent as **one GeoJSON polygon** (single feature or one dissolved multipolygon). Use it when preparing input data to clip rasters and filter vector layers so cells outside the study are `NaN` and features outside the boundary are dropped.
 
-**Final prepared products**
+**Processed input data**
 
-| File | Format | Content |
-|------|--------|---------|
-| `data/input/MFD_districts.geojson` | GeoJSON polygons | 14 most-affected districts (subset of the 31) |
-| `data/input/MFD_boundary.geojson` | GeoJSON polygon | Single dissolved outer boundary of those districts |
+| File (example) | `data/input/boundary.geojson` |
+|----------------|----------------------------------|
+| Format | GeoJSON, one polygon (or dissolved outer ring) |
+| Content | Study-area mask in geographic coordinates (reproject to match your base raster CRS when clipping) |
 
-Used to clip rasters and filter vector data. Not required inside the speed/network math itself, but defines the Nepal study extent.
+**Nepal case study:** `boundary.geojson` is the outer boundary of the **14 districts most affected by the 2015 Gorkha earthquake** (subset of the 31 HRRP earthquake-affected districts).
 
 ---
 
 ## 3. Land cover
 
+**General dataset**
+
+You need a **categorical land-cover raster** (integer class per cell) on your base grid. The Nepal study uses a country-specific product; other regions can use any suitable land-cover map (national or global).
+
+| Item | Detail | Data Dowloads |
+|------|--------|--------|
+| **ESA WorldCover** | https://esa-worldcover.org/en?utm_source=chatgpt.com | https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCover_v200?utm_source=chatgpt.com | 
+| **MODIS Land Cover** | https://www.earthdata.nasa.gov/data/catalog/lpcloud-mcd12q1-061?utm_source=chatgpt.com | https://developers.google.com/earth-engine/datasets/catalog/MODIS_061_MCD12Q1?utm_source=chatgpt.com |
+
+**Nepal data**
+
 | Item | Detail |
 |------|--------|
-| **Notebook** | `1_2_Data_Prep_Ground_Maps.ipynb` |
-| **Original source** | ICIMOD, *Land Cover of Nepal 2010* |
-| **Source link** | https://rds.icimod.org/Home/DataDetail?metadataId=9224&searchlist=True |
-| **Original file (example)** | `data/raw/Land cover of Nepal 2010/data/np_lc_2010_v2f.tif` |
+| **Product** | ICIMOD, *Land Cover of Nepal 2010* |
+| **Download** | https://rds.icimod.org/Home/DataDetail?metadataId=9224&searchlist=True |
 | **Original format** | GeoTIFF, categorical integer classes |
 
-**Final prepared product**
+**Processed input data**
 
-| File (example) | `data/input/MFD_landcover.tif` |
-|----------------|--------------------------------|
-| Format | GeoTIFF, band 1, resampled to the **base grid** |
-| Class codes | Integer **1–8** (used by foot-speed lookup in modeling): |
+| File (example) | `data/input/landcover.tif` |
+|----------------|-----------------------------------------------------------|
+| Format | GeoTIFF, band 1 |
+| Values | Integer class codes **1–8** inside study area |
 
 | Code | Class |
 |------|--------|
@@ -94,184 +102,151 @@ Used to clip rasters and filter vector data. Not required inside the speed/netwo
 | 7 | Snow / glacier |
 | 8 | Built-up |
 
-| Outside study | `NaN` |
+**Using a different land-cover source:** Reclassify your source labels to match codes **1–8** above, *or* edit the class → foot-speed table in `funcs/walkspeed_bylandcover.py` (`travel_speed_map` in `Func_WalkSpeed_by_LandCover`) so each input class maps to the correct travel speed (km/h) for your legend.
 
 ---
 
 ## 4. Elevation
 
+**General dataset**
+
+| Item | Detail | Data Dowloads |
+|------|--------|---------------|
+| **USGS SRTM** (~30 m) | https://www.usgs.gov/centers/eros/science/usgs-eros-archive-digital-elevation-shuttle-radar-topography-mission-srtm-1 | https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003 |
+
+**Nepal data (this case study)**
+
 | Item | Detail |
 |------|--------|
-| **Notebook** | `1_2_Data_Prep_Ground_Maps.ipynb` |
-| **Original source** | USGS SRTM (via Earth Engine export in notebook) |
-| **Source links** | https://www.usgs.gov/centers/eros/science/usgs-eros-archive-digital-elevation-shuttle-radar-topography-mission-srtm-1 |
-| | https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003 |
-| **Original file (example)** | `data/raw/Nepal_Elevation.tif` |
-| **Original format** | GeoTIFF, elevation in **meters** |
+| **Access** | Exported from Google Earth Engine|
+| **Original format** | GeoTIFF, band 1 = elevation (**meters**) |
+| **Original resolution** | ~30 m (SRTM) |
 
-**Final prepared product**
+**Processed input data**
 
-| File (example) | `data/input/MFD_Elevation.tif` |
-|----------------|-------------------------------|
-| Format | GeoTIFF, `float`, band 1, resampled to **base grid** |
+| File (example) | `data/input/elevation.tif`  |
+|----------------|----------------------------------------------------------|
+| Format | GeoTIFF, `float`, band 1|
 | Values | Elevation (m) |
-| Outside study | `NaN` |
+
 
 ---
 
 ## 5. Slope
 
-| Item | Detail |
-|------|--------|
-| **Notebook** | `1_2_Data_Prep_Ground_Maps.ipynb` |
-| **Original source** | Derived from elevation (SRTM-based raster in project) |
-| **Original file (example)** | `data/raw/Nepal_Slope.tif` |
-| **Original format** | GeoTIFF |
+**Note:** In the Nepal case study, the slope layer is derived from the elevation layer (§4) as ready-made slope raster is not commonly distributed. If you have a slope product in your study area, you may use it directly.
 
-**Final prepared product**
+**Processed input data**
 
-| File (example) | `data/input/MFD_Slope.tif` |
+| File (example) | `data/input/slope.tif` |
 |----------------|---------------------------|
-| Format | GeoTIFF, `float`, band 1, resampled to **base grid** |
-| Values | Slope in **percent (%)** — used for walk speed, drive speed, and zigzag correction |
-| Outside study | `NaN` |
+| Format | GeoTIFF, `float`, band 1|
+| Values | Terrain slope in **percent (%)**: **0** (flat) to **90** (very steep) |
 
 ---
 
 ## 6. Surface water
 
+**General dataset**
+
+| Item | Detail | Avaliable Through |
+|------|--------|---------------|
+| **OpenStreetMap** | https://www.openstreetmap.org/about | Geofabrik OSM extracts https://download.geofabrik.de/ |
+
+**Nepal data (this case study)**
+
 | Item | Detail |
 |------|--------|
-| **Notebook** | `1_2_Data_Prep_Ground_Maps.ipynb` |
-| **Original source** | OpenStreetMap Nepal extract (Geofabrik) |
-| **Source link** | https://download.geofabrik.de/asia/nepal.html |
-| **Original files (example)** | `data/raw/nepal_osm_water/gis_osm_water_a_free_1.shp` (polygons) |
-| | `data/raw/nepal_osm_water/gis_osm_waterways_free_1.shp` (lines) |
-| **Original format** | Esri shapefile, line/polygon geometries |
+| **Download** | https://download.geofabrik.de/asia/nepal.html |
+| **Original files** | `gis_osm_water_a_free_1.shp` (water polygons), `gis_osm_waterways_free_1.shp` (waterway lines) |
+| **Original format** | Esri shapefile |
 
-**Final prepared product**
+**Nepal case study:** The water-polygon and waterway layers were rasterized and **merged** into one layer for the study area.
 
-| File (example) | `data/process/MFD_water_merged.tif` |
+**Processed input data**
+
+| File (example) | `data/input/water_merged.tif` |
 |----------------|-----------------------------------|
-| Format | GeoTIFF, band 1, on **base grid** |
-| Values | **`0`** = land, **`1`** = water (not walkable), **`NaN`** = outside study |
-
-Intermediate prep files (`MFD_waterbody.tif`, `MFD_waterways.tif`) are optional; modeling uses the **merged** mask.
+| Format | GeoTIFF, band 1 |
+| Values | **`0`** = land, **`1`** = water (not walkable) |
 
 ---
 
-## 7. Roads (vector + raster)
+## 7. Roads
+
+**General dataset**
+
+| Item | Detail | Avaliable Through |
+|------|--------|---------------|
+| **OpenStreetMap** | https://www.openstreetmap.org/about | Geofabrik OSM extracts https://download.geofabrik.de/ |
+
+**Nepal data (this case study)**
 
 | Item | Detail |
 |------|--------|
-| **Notebook** | `1_2_Data_Prep_Ground_Maps.ipynb` |
-| **Original source** | OpenStreetMap Nepal roads (Geofabrik) |
-| **Source link** | https://download.geofabrik.de/asia/nepal.html |
-| **Original file (example)** | `data/raw/nepal_osm_roads/gis_osm_roads_free_1.shp` |
+| **Download** | https://download.geofabrik.de/asia/nepal.html |
+| **Original file** | `data/raw/nepal_osm_roads/gis_osm_roads_free_1.shp` |
 | **Original format** | Esri shapefile; OSM attribute **`fclass`** (road type) |
 
-**Final prepared products**
 
-| File (example) | Format | Content |
-|----------------|--------|---------|
-| `data/input/MFD_roads.geojson` | GeoJSON lines | Roads intersecting study area; numeric **`class`** **1–4** from OSM `fclass` grouping (see notebook / `Funcs_Road_Classification`) |
+**Processed input data**
 
-| Class | Typical OSM types (summary) |
-|-------|-----------------------------|
-| 1 | trunk, trunk_link |
-| 2 | primary, primary_link, secondary, secondary_link |
-| 3 | tertiary, residential, service, unclassified, track grades 1–3 |
-| 4 | track, path, footway, steps, etc. |
+| File (example) | `data/input/roads.tif` |
+|----------------|-----------------------------------|
+| Format | GeoTIFF, band 1 |
+| Values | Integer class codes **`0`** = no road, **`1–4`** = road class from OSM `fclass` grouping|
 
-| File (example) | `data/process/MFD_roads.tif` |
-|----------------|------------------------------|
-| Format | GeoTIFF on **base grid** |
-| Values | **`0`** = no road, **`1–4`** = road class, **`NaN`** = outside study |
+| Class | Typical OSM types (summary) | Corespodint nepal dsignation|
+|-------|-----------------------------| -----------------------------|
+| 1 | trunk, trunk_link |Strategic Road Network (SRN) |
+| 2 | primary, primary_link, secondary, secondary_link |District Road Core Network (DRCN) | 
+| 3 | tertiary, residential, service, unclassified, track grades 1–3 | Strategic Urban Road (SUR) and unpaved roads|
+| 4 | track, path, footway, steps, etc. | Village Roads (VR) and Paths |
 
-Modeling uses **vector** roads for footpath speeds and **raster** roads for vehicle speeds (raster can be built from the same GeoJSON on your base grid).
+**Road classes in this study:** Classes **1–4** group OSM `fclass` values to match **Nepal road designations** (SRN, DRCN, SUR, VR). Each class uses a different **road class × slope → speed** lookup in `funcs/drivespeed_by_roadslope.py` (`speed_lookup` in `Func_DriveSpeed_by_Road_Slope`). For other regions, define your own OSM groupings and edit that lookup table to match local road types and speed assumptions.
+
 
 ---
 
-## 8. Landslide impact mask
+## 8. Hazard impact mask (landslides in this study)
+
+**General:** This layer marks **hazard-affected cells** for the post-event scenario. In Nepal it is the **2015 Gorkha landslide** footprint; elsewhere it can be any hazard (flood, fire, earthquake damage, etc.). Provide a raster on your base grid where **`1`** = affected (blocked or impassable in the hazard run), **`0`** = not affected, the hazard type does not matter, only the mask.
+
+**Nepal data (this case study)**
 
 | Item | Detail |
 |------|--------|
-| **Notebook** | `1_4_Data_Prep_Landslides.ipynb` |
 | **Original source** | USGS / Roback et al., landslides from 2015 Gorkha earthquake |
-| **Source link** | https://www.sciencebase.gov/catalog/item/582c74fbe4b04d580bd377e8 |
-| **Original file (example)** | `data/raw/Roback_Nepal_final_files/Full20170209/Full20170209.shp` |
+| **Download** | https://www.sciencebase.gov/catalog/item/582c74fbe4b04d580bd377e8 |
+| **Original file (example)** | `Full20170209/Full20170209.shp` |
 | **Original format** | Esri shapefile, landslide polygons |
-| **Notebook note** | Earth Engine script link also recorded for alternate extraction |
 
-**Final prepared product**
+**Processed input data**
 
-| File (example) | `data/input/MFD_landslide.tif` |
+| File (example) | `data/input/landslide.tif` |
 |----------------|-------------------------------|
-| Format | GeoTIFF, band 1, rasterized to **base grid** |
-| Values | **`1`** = landslide-affected cell (blocked in post scenario), **`0`** = not landslide, **`NaN`** = outside study |
+| Format | GeoTIFF, band 1 |
+| Values | **`1`** = landslide-affected cell, **`0`** = not landslide |
 
 ---
 
 ## 9. Destinations (for access-time calculation)
 
+**General:** A raster marking **where your destinations are**. Use any facility set you care about (hospitals, clinics, schools, markets, etc.) from any source—points are rasterized to cells on the base grid. **`1`** = destination cell, **`0`** = not a destination (inside study). The model treats any value **> 0** as a destination for shortest-path routing.
+
+**Nepal data (this case study)**
+
 | Item | Detail |
 |------|--------|
-| **Notebook** | `1_3_Data_Prep_Destination.ipynb` |
-| **Original source (example: hospitals)** | NDRRMA healthcare facility locations |
-| **Original file (example)** | `data/raw/NDRRMA_health.geojson` |
-| **Original format** | GeoJSON points; fields include `id`, `type`, etc. |
+| **Destinations used** | Hospitals |
+| **Original source** | NDRRMA healthcare facility list |
+| **Original format** | GeoJSON points |
 
-**Final prepared products (examples from this study)**
+**Processed input data**
 
-| File | Format | Content |
-|------|--------|---------|
-| `data/input/MFD_healthcare.geojson` | GeoJSON points | Facilities clipped to boundary; added field **`class`**: `Hospital` or `Clinic` |
-| `data/process/MFD_healthcare_hospital_nodes_collection.tif` | GeoTIFF on **base grid** | One or more hospital cells with value **> 0** (often `1`) per occupied cell |
-
-For access-time modeling you need a **destination raster** on the base grid:
-
-| Requirement | Detail |
-|-------------|--------|
-| Band 1 | **`> 0`** marks a destination cell; **`NaN`** outside study |
-| Meaning | Each positive cell is a target for shortest-path routing (nearest-destination travel time) |
-
-You may use any destination set (hospitals, markets, schools, etc.) as long as it is expressed as this raster on your chosen base grid. The Nepal hospital example above is one prepared instance.
+| File (example) | `data/input/destination.tif` |
+|----------------|------------------------------|
+| Format | GeoTIFF, band 1, on **base grid** |
+| Values | **`1`** at each hospital cell; **`0`** elsewhere|
 
 ---
-
-## 10. Other vectors from study-area prep (optional)
-
-Documented in `1_0_Data_Prep_StudyArea.ipynb` for reference or auxiliary analysis—not all are used in the core `2_1`–`3_2` speed pipeline:
-
-| Source (example) | Original | Final (example) |
-|------------------|----------|-----------------|
-| IER household survey locations | `data/raw/IER-HH-Locations.xlsx` (columns `LAT`, `LON`) | `data/input/AF_survey_locations.geojson` |
-| District headquarters | `data/raw/District/district_headquarters/disthq_GCSWGS1984.shp` | `data/input/AF_district_headquarters.geojson` |
-
----
-
-## Summary checklist for modeling (`2_1` → `3_2`)
-
-Prepare these aligned to **your** base grid:
-
-| Layer | Prepared file (Nepal examples) | Key value rules |
-|-------|-------------------------------|-----------------|
-| Base / mask | User-defined (here: `MFD_population.tif`) | Defines extent and cell size |
-| Land cover | `MFD_landcover.tif` | Integers 1–8 |
-| Water | `MFD_water_merged.tif` | 0 / 1 / NaN |
-| Roads (vector) | `MFD_roads.geojson` | `class` 1–4 |
-| Roads (raster) | `MFD_roads.tif` | 0, 1–4, NaN |
-| Slope | `MFD_Slope.tif` | Percent |
-| Elevation | `MFD_Elevation.tif` | Meters |
-| Landslide | `MFD_landslide.tif` | 0 / 1 / NaN |
-| Destinations | e.g. `*_nodes_collection.tif` | > 0 at target cells |
-
----
-
-## References (as cited in project notebooks)
-
-- Meta population maps: https://dataforgood.facebook.com/dfg/docs/methodology-high-resolution-population-density-maps  
-- ICIMOD land cover 2010: https://rds.icimod.org/Home/DataDetail?metadataId=9224&searchlist=True  
-- USGS SRTM: https://developers.google.com/earth-engine/datasets/catalog/USGS_SRTMGL1_003  
-- Geofabrik OSM Nepal: https://download.geofabrik.de/asia/nepal.html  
-- USGS 2015 Nepal landslides: https://www.sciencebase.gov/catalog/item/582c74fbe4b04d580bd377e8  
