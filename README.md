@@ -72,7 +72,6 @@ After a successful run, the main outputs are in **`data/result/`**:
 
 ## Other result visualizations
 
-*(Post-processing and plotting code for maps, CDFs, and population summaries is not included in this repository yet.)*
 
 ---
 
