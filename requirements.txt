@@ -1,0 +1,6 @@
+numpy
+rasterio
+geopandas
+networkx
+tqdm
+shapely

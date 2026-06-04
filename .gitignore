@@ -1,0 +1,11 @@
+# Large geospatial binaries — copy or download into data/input/ locally (see DATA_DESCRIPTION.md)
+data/input/*
+!data/input/README.md
+data/process/*
+data/result/*
+!data/process/.gitkeep
+!data/result/.gitkeep
+
+__pycache__/
+*.pyc
+.DS_Store
