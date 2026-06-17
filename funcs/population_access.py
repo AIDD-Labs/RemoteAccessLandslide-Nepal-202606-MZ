@@ -1,4 +1,4 @@
-"""Population-weighted access-time CDF (pre vs post disaster)."""
+"""Population-weighted access-time CDF utilities for the modeling package."""
 
 from pathlib import Path
 
@@ -9,14 +9,15 @@ import rasterio
 
 def _population_weighted_access_cdf(access, pop_f, valid_mask):
     """
-    Population-weighted empirical CDF of ``access`` (hours).
+    Population-weighted empirical CDF of access time in hours.
 
-    Uses only cells where ``valid_mask`` is True. Returns ``(x_step, y_step, pop_total)``
-    suitable for ``ax.step(..., where='post')`` with leading (0, 0).
+    Returns ``(x_step, y_step, pop_total)`` arrays suitable for
+    ``ax.step(..., where="post")`` with a leading ``(0, 0)`` point.
     """
     access = np.asarray(access, dtype=np.float64).ravel()
     pop_f = np.asarray(pop_f, dtype=np.float64).ravel()
     valid_mask = np.asarray(valid_mask, dtype=bool).ravel()
+
     access = access.copy()
     access[np.isneginf(access)] = np.nan
 
@@ -42,11 +43,13 @@ def _read_population_and_two_access_rasters(
     population_tiff_path, access_pre_tiff_path, access_post_tiff_path
 ):
     """
-    Load population + pre/post access (band 1), validate alignment, return cleaned arrays.
+    Load population + pre/post access rasters and validate grid alignment.
 
     Returns
     -------
-    a_pre, a_post, pop_f, crs, transform, h, w
+    tuple
+        ``(a_pre, a_post, pop_f)`` where all arrays are ``float64`` and
+        ``-inf`` in access rasters is converted to ``NaN``.
     """
     with rasterio.open(access_pre_tiff_path) as pre_src:
         a_pre = np.asarray(pre_src.read(1), dtype=np.float64)
@@ -62,106 +65,81 @@ def _read_population_and_two_access_rasters(
             )
         if post_src.transform != transform:
             raise ValueError(
-                "Post access transform must match the pre access TIFF for cell alignment."
+                "Post access transform must match pre access TIFF for cell alignment."
             )
         if (crs is None) ^ (post_src.crs is None) or (
             crs is not None and post_src.crs is not None and crs != post_src.crs
         ):
-            raise ValueError(
-                "Post access CRS must match the pre access TIFF for cell alignment."
-            )
+            raise ValueError("Post access CRS must match pre access TIFF for cell alignment.")
 
-    with rasterio.open(population_tiff_path) as p_src:
-        pop = np.asarray(p_src.read(1), dtype=np.float64)
+    with rasterio.open(population_tiff_path) as pop_src:
+        pop = np.asarray(pop_src.read(1), dtype=np.float64)
         if pop.shape != (h, w):
             raise ValueError(
                 f"Population shape {pop.shape} must match access TIFF shape {(h, w)}."
             )
-        if p_src.transform != transform:
+        if pop_src.transform != transform:
             raise ValueError(
-                "Population TIFF transform must match the access TIFF for cell alignment."
+                "Population transform must match access TIFF for cell alignment."
             )
-        if (crs is None) ^ (p_src.crs is None) or (
-            crs is not None and p_src.crs is not None and crs != p_src.crs
+        if (crs is None) ^ (pop_src.crs is None) or (
+            crs is not None and pop_src.crs is not None and crs != pop_src.crs
         ):
-            raise ValueError(
-                "Population TIFF CRS must match the access TIFF for cell alignment."
-            )
+            raise ValueError("Population CRS must match access TIFF for cell alignment.")
 
     pop_f = np.nan_to_num(pop, nan=0.0, posinf=0.0, neginf=0.0)
     a_pre = a_pre.copy()
     a_post = a_post.copy()
     a_pre[np.isneginf(a_pre)] = np.nan
     a_post[np.isneginf(a_post)] = np.nan
-    return a_pre, a_post, pop_f, crs, transform, h, w
+    return a_pre, a_post, pop_f
 
 
 def Func_Access_Time_Cdf_Pre_Post(
     population_tiff_path,
     access_pre_tiff_path,
     access_post_tiff_path,
-    title=None,
+    title="CDF of Access time",
     save_plot_path=None,
-    max_access_plot_hours=None,
     xlim=None,
     ylim=None,
 ):
     """
-    **Population-weighted cumulative distribution** of hospital access time (hours) for the same
-    people grid under **pre-disaster** and **post-disaster** access rasters.
-
-    All three GeoTIFFs must share **shape**, **transform**, and **CRS** (band 1). Population cells
-    with non-positive weight are ignored. The CDF uses the **common** mask: finite access on
-    **both** pre and post rasters and ``population > 0``, so the two curves refer to the same set
-    of weighted individuals.
-
-    Plot: **light green** = pre-disaster CDF, **dark green** = post-disaster CDF (same axes).
+    Plot population-weighted CDFs of access time for pre and post scenarios.
 
     Parameters
     ----------
     population_tiff_path : str or Path
-        Population (people per cell), band 1.
+        Population raster path.
     access_pre_tiff_path : str or Path
-        Access time (hours) pre-disaster, band 1.
+        Normal/pre-disaster access-time raster path (hours).
     access_post_tiff_path : str or Path
-        Access time (hours) post-disaster, band 1.
+        Landslide/post-disaster access-time raster path (hours).
     title : str, optional
-        Figure title.
+        Figure title. Default is ``"CDF of Access time"``.
     save_plot_path : str or Path, optional
-        If set, saves **JPEG** (``.jpg``), ``dpi=200``.
-    max_access_plot_hours : float, optional
-        If set and ``xlim`` is not, sets ``xlim`` to ``(0, max_access_plot_hours)`` (hours).
-    xlim : tuple of float, optional
-        ``(left, right)`` access-time axis limits in hours; crops the figure horizontally.
-        If given, overrides ``max_access_plot_hours``.
-    ylim : tuple of float, optional
-        ``(bottom, top)`` cumulative-fraction limits; crops the figure vertically. Default is
-        ``(0, 1.02)`` when omitted.
+        If provided, save output as ``.jpg``.
+    xlim : tuple(float, float), optional
+        Explicit x-axis range in hours.
+    ylim : tuple(float, float), optional
+        Explicit y-axis range for cumulative fraction.
 
     Returns
     -------
-    dict
-        ``x_pre``, ``cdf_pre``, ``x_post``, ``cdf_post`` — step arrays; ``pop_total`` — denominator;
-        ``n_cells`` — count of cells in the common mask.
+    None
+        Produces a CDF plot (and optionally saves it) without returning data.
     """
-    a_pre, a_post, pop_f, crs, transform, h, w = _read_population_and_two_access_rasters(
+    a_pre, a_post, pop_f = _read_population_and_two_access_rasters(
         population_tiff_path, access_pre_tiff_path, access_post_tiff_path
     )
 
     common = np.isfinite(a_pre) & np.isfinite(a_post) & (pop_f > 0)
-    n_cells = int(np.sum(common))
-    pop_total = float(np.sum(pop_f[common]))
 
     x_pre, cdf_pre, tot_pre = _population_weighted_access_cdf(a_pre, pop_f, common)
     x_post, cdf_post, tot_post = _population_weighted_access_cdf(a_post, pop_f, common)
 
     if abs(tot_pre - tot_post) > 1e-6 * max(tot_pre, 1.0):
-        raise RuntimeError("Internal CDF totals disagree; check population weighting.")
-
-    print(
-        f"CDF denominator: {pop_total:,.0f} people in {n_cells:,d} cells "
-        "(finite pre & post access, pop > 0)."
-    )
+        raise RuntimeError("Internal CDF totals disagree; check input rasters.")
 
     fig, ax = plt.subplots(figsize=(9, 6), facecolor="white")
     ax.step(
@@ -180,43 +158,30 @@ def Func_Access_Time_Cdf_Pre_Post(
         linewidth=2.0,
         label="Post-disaster",
     )
+
     if xlim is not None:
         if len(xlim) != 2:
             raise ValueError("xlim must be (left, right) with two values (hours).")
         ax.set_xlim(float(xlim[0]), float(xlim[1]))
-    elif max_access_plot_hours is not None:
-        ax.set_xlim(0.0, float(max_access_plot_hours))
     else:
         ax.set_xlim(left=0.0)
 
     if ylim is not None:
         if len(ylim) != 2:
-            raise ValueError("ylim must be (bottom, top) with two values (cumulative fraction).")
+            raise ValueError("ylim must be (bottom, top) with two values.")
         ax.set_ylim(float(ylim[0]), float(ylim[1]))
     else:
         ax.set_ylim(0.0, 1.02)
-    ax.set_xlabel("Access time to hospital [hours]")
-    ax.set_ylabel("Cumulative fraction of population")
+
+    ax.set_xlabel("Access time to destination [h]")
+    ax.set_ylabel("Cumulative share of population")
     ax.grid(True, linestyle="--", linewidth=0.5, color="gray", alpha=0.6)
     ax.legend(loc="lower right", frameon=True)
-    if title:
-        ax.set_title(title)
-    else:
-        ax.set_title("Population-weighted CDF of access time (pre vs post)")
+    ax.set_title(title if title else "Population-weighted CDF of access time")
     plt.tight_layout()
 
     if save_plot_path is not None:
         out = Path(save_plot_path).with_suffix(".jpg")
         fig.savefig(out, format="jpeg", dpi=200, bbox_inches="tight", facecolor="white")
-        print(f"CDF figure saved as {out}")
 
     plt.show()
-
-    return {
-        "x_pre": x_pre,
-        "cdf_pre": cdf_pre,
-        "x_post": x_post,
-        "cdf_post": cdf_post,
-        "pop_total": pop_total,
-        "n_cells": n_cells,
-    }

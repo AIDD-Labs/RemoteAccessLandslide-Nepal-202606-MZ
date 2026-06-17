@@ -1,7 +1,9 @@
-numpy
-rasterio
+# Direct dependencies for nepal_landslide_modeling (run_modeling.py + funcs/)
 geopandas
 matplotlib
 networkx
-tqdm
+numpy
+rasterio
+seaborn
 shapely
+tqdm

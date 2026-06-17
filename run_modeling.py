@@ -33,6 +33,10 @@ from funcs.walkspeed_modify_byslope import Func_Modify_WalkSpeed_by_Slope
 from funcs.walkspeed_modify_bywater import Func_Modify_WalkSpeed_by_Water
 from funcs.travelnetwork_access_diff import Func_Access_Diff
 from funcs.population_access import Func_Access_Time_Cdf_Pre_Post
+from funcs.plot_tiff_access_time import (
+    Func_Plot_Access_Diff_wHazard_Crop,
+    Func_Plot_Access_Time_wHazard_Crop,
+)
 
 
 # =============================================================================
@@ -46,7 +50,7 @@ roads_raster = ROOT / "data/input/roads.tif"
 slope_raster = ROOT / "data/input/slope.tif"
 elevation_raster = ROOT / "data/input/elevation.tif"
 landslide_raster = ROOT / "data/input/landslide.tif"
-destination_raster = ROOT / "data/input/destination.tif"
+destination_raster = ROOT / "data/input/destination_osm.tif"
 population_raster = ROOT / "data/input/population.tif"
 boundary_geojson = ROOT / "data/input/boundary.geojson"
 
@@ -72,6 +76,8 @@ def run_modeling(
     elevation_raster,
     landslide_raster,
     destination_raster,
+    population_raster,
+    boundary_geojson,
     process_dir,
     result_dir,
     foot_reduction_factor=1.0,
@@ -158,6 +164,7 @@ def run_modeling(
     # --- Calculate access time ---
     out_access_normal = result_dir / "access_normal.tif"
     out_access_landslide = result_dir / "access_landslide.tif"
+    out_access_landslide_plot = result_dir / "access_landslide_map.png"
    
     # Shortest travel time to nearest destination (baseline network)
     Func_Shortest_Path_To_Target( net_normal, destination_nodes_pkl, speed_normal, out_access_normal)
@@ -167,14 +174,51 @@ def run_modeling(
     Func_Shortest_Path_To_Target(net_landslide, destination_nodes_pkl, speed_landslide, out_access_landslide)
     print(f"Shortest travel time to nearest destination (landslide network) saved to {out_access_landslide}")
 
+    # Plot post-landslide shortest travel time to nearest destination
+    Func_Plot_Access_Time_wHazard_Crop(
+        tiff_path=out_access_landslide,
+        hazard_tiff_path=landslide_raster,
+        water_tiff_path=water_raster,
+        destination_tiff_path=destination_raster,
+        study_boundary=boundary_geojson,
+        colorbar_label="Access time [h]",
+        title=None,
+        save_path=out_access_landslide_plot,
+        crop_lonlat=None,
+    )
+
     # --- Calculate access time difference ---
     out_access_diff = result_dir / "access_diff.tif"
-    Func_Access_Diff(out_access_normal, out_access_landslide, speed_normal, out_access_diff)
-    print(f"Access time difference saved to {out_access_diff}") 
+    out_access_diff_plot = result_dir / "access_diff_map.png"
 
-    # --- Calculate cumulative distribution function of access time for the population  
+    # Calculate access time difference
+    Func_Access_Diff(out_access_normal, out_access_landslide, out_access_diff)
+    print(f"Access time difference saved to {out_access_diff}")
+
+    # Plot access time difference
+    Func_Plot_Access_Diff_wHazard_Crop(
+        access_diff_tiff_path=out_access_diff,
+        hazard_tiff_path=landslide_raster,
+        study_boundary=boundary_geojson,
+        destination_tiff_path=destination_raster,
+        colorbar_label="Access Time Increase [h]",
+        title=None,
+        save_path=out_access_diff_plot,
+        crop_lonlat=None,
+    )
+
+    # --- Calculate cumulative distribution function of access time for the population ---
     out_access_cdf = result_dir / "access_cdf.jpg"
-    Func_Access_Time_Cdf_Pre_Post(out_access_diff, population_raster, out_access_cdf,save_plot_path=out_access_cdf)
+
+    Func_Access_Time_Cdf_Pre_Post(
+        population_tiff_path=population_raster,
+        access_pre_tiff_path=out_access_normal,
+        access_post_tiff_path=out_access_landslide,
+        title=None,
+        save_plot_path=out_access_cdf,
+        xlim=None,
+        ylim=None,
+    )
     print(f"Access time cumulative distribution function plot saved to {out_access_cdf}")
 
 if __name__ == "__main__":
@@ -186,6 +230,8 @@ if __name__ == "__main__":
         elevation_raster=elevation_raster,
         landslide_raster=landslide_raster,
         destination_raster=destination_raster,
+        population_raster=population_raster,
+        boundary_geojson=boundary_geojson,
         process_dir=process_dir,
         result_dir=result_dir,
         foot_reduction_factor=foot_reduction_factor,
