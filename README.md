@@ -118,10 +118,13 @@ After a successful run, main outputs in **`data/result/`**:
 
 ## Citation
 
-If you use this code or sample data, please cite:
+This software is archived and published through DesignSafe.
 
-> Zeng, Y., Guikema, S., & Loos, S. (2026). *Seeing Beyond the Road: Modeling Post-Disaster Access in Rural and Complex Settings.* Unpublished manuscript, Department of Civil and Environmental Engineering, University of Michigan — Ann Arbor.
+Published Software DOI: https://doi.org/10.17603/ds2-z6jb-0f97
 
+If you use this software, please cite:
+
+Zeng, Y., Guikema, S., & Loos, S. (2026). Modeling Disaster Impacts on Access to Essential Services in Rural Mountainous Regions (Version 1.1) [Computer software]. DesignSafe. https://doi.org/10.17603/ds2-z6jb-0f97
 ---
 
 ## Contact
