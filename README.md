@@ -124,7 +124,7 @@ Published Software DOI: https://doi.org/10.17603/ds2-z6jb-0f97
 
 If you use this software, please cite:
 
-Zeng, Y., Guikema, S., & Loos, S. (2026). Modeling Disaster Impacts on Access to Essential Services in Rural Mountainous Regions (Version 1.1) [Computer software]. DesignSafe. https://doi.org/10.17603/ds2-z6jb-0f97
+**Zeng, Y., Guikema, S., & Loos, S. (2026). Modeling Disaster Impacts on Access to Essential Services in Rural Mountainous Regions (Version 1.1) [Computer software]. DesignSafe. https://doi.org/10.17603/ds2-z6jb-0f97**
 ---
 
 ## Contact
