@@ -1,0 +1,50 @@
+{
+"@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+"@type": "SoftwareSourceCode",
+"name": "Modeling Disaster Impacts on Access to Essential Services in Rural Mountainous Regions",
+"description": "This project contains research software and example datasets for modeling the impacts of disasters on access to essential services in rural, mountainous environments. The framework is designed to be flexible, rely on openly available global data, and support applications in developing countries and rural regions where travel often occurs beyond road networks. It accounts for mixed-mode and pedestrian travel, addressing limitations of conventional network-based accessibility models that may not accurately represent real-world travel behavior in such settings. The framework integrates friction-surface modeling and cost-distance analysis to estimate travel times between population settlements and service locations under both normal and disrupted conditions. It uses geospatial datasets including transportation networks, land cover, elevation, population distribution, and hazard or disruption data as inputs, and produces pre-disaster and post-disaster travel-time surfaces along with accessibility metrics as outputs. The software was developed using Nepal as a case study and is applied to assess the impacts of landslides triggered by the 2015 Gorkha earthquake on access to healthcare services. The repository includes source code, example data, and instructions for reproducing the analyses presented in the associated research publication. This software can be reused and adapted to evaluate disaster impacts on service access in other regions and hazard contexts.",
+"codeRepository": "https://github.com/AIDD-Labs/Remote_Access_Landslide-Nepal-202606-MZ.git",
+"license": "https://spdx.org/licenses/BSD-3-Clause",
+"programmingLanguage": "Python 3",
+"author": [
+{
+"@type": "Person",
+"givenName": "Yue",
+"familyName": "Zeng",
+"email": "[majorz@umich.edu](mailto:majorz@umich.edu)",
+"affiliation": {
+"@type": "Organization",
+"name": "Department of Civil and Environmental Engineering, University of Michigan"
+}
+},
+{
+"@type": "Person",
+"givenName": "Seth",
+"familyName": "Guikema",
+"affiliation": {
+"@type": "Organization",
+"name": "Department of Civil and Environmental Engineering, University of Michigan"
+}
+},
+{
+"@type": "Person",
+"givenName": "Sabine",
+"familyName": "Loos",
+"affiliation": {
+"@type": "Organization",
+"name": "Department of Civil and Environmental Engineering, University of Michigan"
+}
+}
+],
+"keywords": [
+"disaster modeling",
+"service access",
+"healthcare access",
+"landslides",
+"Nepal",
+"cost-distance analysis",
+"friction surface modeling",
+"rural transportation",
+"disaster resilience"
+]
+}
